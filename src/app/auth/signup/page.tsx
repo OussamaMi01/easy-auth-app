@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 
 import { useState } from "react";
-import { useRouter,useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Eye, EyeOff, Mail, Lock, User, Shield, AlertCircle, CheckCircle } from "lucide-react";
 import { signIn } from "next-auth/react";
@@ -15,8 +15,7 @@ import { APP_TITLE } from "@/lib/constants";
 
 export default function SignUpPage() {
   const router = useRouter();
-   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") ?? "/dashboard";
+const callbackUrl = "/dashboard";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
