@@ -11,6 +11,7 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  // Define protected routes
   const isProtected = ["/dashboard", "/settings", "/profile"].some((p) =>
     pathname.startsWith(p)
   );
@@ -18,7 +19,15 @@ export async function middleware(request: NextRequest) {
     pathname.startsWith(p)
   );
 
-  // ── 1. No session → signin ────────────────────────────────────────────────
+  // MFA related routes that should be accessible during setup
+  const isMfaRoute = ["/auth/setup-totp", "/auth/mfa-challenge"].some((p) =>
+    pathname.startsWith(p)
+  );
+
+  const isVerifyEmailRoute = pathname.startsWith("/auth/verify-email");
+  const isLogoutRoute = pathname.startsWith("/api/auth/signout");
+
+  // ── 1. No session → signin (except for public routes) ────────────────────
   if (isProtected && !token) {
     const url = new URL("/auth/signin", request.url);
     url.searchParams.set("callbackUrl", pathname);
@@ -26,29 +35,46 @@ export async function middleware(request: NextRequest) {
   }
 
   if (token) {
+    // Debug logging
+    console.log("[Middleware] Token:", {
+      email: token.email,
+      emailVerified: token.emailVerified,
+      totpEnabled: token.totpEnabled,
+      mfaPassed: token.mfaPassed,
+    });
+
     // ── 2. Email not verified → verify-email ───────────────────────────────
-    if (!token.emailVerified && isProtected) {
+    // Skip for logout route
+    if (!isLogoutRoute && !token.emailVerified && isProtected && !isVerifyEmailRoute && !isMfaRoute) {
       return NextResponse.redirect(new URL("/auth/verify-email", request.url));
     }
 
-    // ── 3. TOTP enabled but MFA not passed this session → mfa-challenge ────
+    // ── 3. Email verified but TOTP not enabled → setup-totp ─────────────────
+    // This is only for users who haven't set up MFA yet
+    // Skip for MFA routes, verify-email, and logout
     if (
+      !isLogoutRoute &&
+      token.emailVerified &&
+      !token.totpEnabled &&
+      isProtected &&
+      !isMfaRoute &&
+      !isVerifyEmailRoute
+    ) {
+      return NextResponse.redirect(new URL("/auth/setup-totp", request.url));
+    }
+
+    // ── 4. TOTP enabled but MFA not passed this session → mfa-challenge ────
+    // Skip for MFA routes, verify-email, and logout
+    if (
+      !isLogoutRoute &&
       token.emailVerified &&
       token.totpEnabled &&
       !token.mfaPassed &&
-      isProtected
+      isProtected &&
+      !isMfaRoute &&
+      !isVerifyEmailRoute
     ) {
       return NextResponse.redirect(new URL("/auth/mfa-challenge", request.url));
-    }
-
-    // ── 4. TOTP not set up yet → setup-totp ────────────────────────────────
-    // Since MFA is required for all users, enforce setup after email verification
-    if (
-      token.emailVerified &&
-      !token.totpEnabled &&
-      isProtected
-    ) {
-      return NextResponse.redirect(new URL("/auth/setup-totp", request.url));
     }
 
     // ── 5. Fully authenticated → skip public auth pages ────────────────────
@@ -67,5 +93,8 @@ export const config = {
     "/profile/:path*",
     "/auth/signin",
     "/auth/signup",
+    "/auth/setup-totp",
+    "/auth/mfa-challenge",
+    "/auth/verify-email",
   ],
 };

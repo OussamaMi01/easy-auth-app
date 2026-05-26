@@ -12,7 +12,8 @@ export const env = createEnv({
 
     NEXTAUTH_URL: z.string().url(),
     NEXTAUTH_SECRET: z.string().min(32),
-
+    GOOGLE_CLIENT_ID: z.string().min(1),
+    GOOGLE_CLIENT_SECRET: z.string().min(1),
     // Email
     MOCK_SEND_EMAIL: z
       .string()
@@ -50,6 +51,8 @@ export const env = createEnv({
     UPSTASH_REDIS_REST_URL: process.env.UPSTASH_REDIS_REST_URL,
     UPSTASH_REDIS_REST_TOKEN: process.env.UPSTASH_REDIS_REST_TOKEN,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
+    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
   },
 
   skipValidation: !!process.env.SKIP_ENV_VALIDATION,
